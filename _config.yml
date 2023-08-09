@@ -1,3 +1,4 @@
-theme: jekyll-theme-minima
+remote_theme: pages-themes/slate@v0.2.0
+plugins:
+- jekyll-remote-theme
 title: [GSoC 2023 LLVM Final Report]
-markdown: kramdown

@@ -1,4 +1,4 @@
-# GSoC 2023: Addressing Rust optimization failures in LLVM
+# GSoC 2023 Final Project Report
 
 <https://summerofcode.withgoogle.com/programs/2023/projects/a16FfPnb>
 

@@ -2,7 +2,7 @@
 
 <https://summerofcode.withgoogle.com/programs/2023/projects/a16FfPnb>
 
-**Author**: [Kohei Asano(khei4)](https://github.com/khei4)
+**Author**: [Kohei Asano](https://github.com/khei4)
 
 **Organization**: [LLVM](https://llvm.org/)
 
@@ -10,20 +10,31 @@
 
 ## Introduction
 
-- Rust is popular
-- But current LLVM does have a lot of miss-opportunity for the opimitzation
+Over this summer I worked on bassically middle-end passes like InstCombine, SimplifyCFG, MemCpyOpt.
 
-- One of them is to remove memcpy introduced by the move semantics.
+## Works
 
-## Patches
+### 1. Constant Propagation for uniformly patterned aggregated types on InstCombine
 
-### Constant Propagation for uniformly patterned aggregated types on InstCombine
+(from proposal)
+  This issue reports missed optimization opportunities for loads of global constant aggregates with the same elements. This particular opportunity could be handled by alignment-based and GEP-indexed-based analysis.
 
-### removal of memcpy introduced on the attributed with nocapture, readonly and noalias on MemCpyOpt
+### 2. Removal of memcpy introduced on the attributed with nocapture, readonly and noalias on MemCpyOpt
 
-### Attaching wrapping flags for the switch to look up table conversion on SimplifyCFG
+(from proposal)
+  LLVM function arguments can have attributes, noalias shows there is no other pointer variable that points to the same as the argument, and readonly shows that the argument is not modified in the function. Functions attributed with noalias and readonly at the same position show invariance during the execution of the functions. We can omit the memcpy of argument to give such functions. To completely fix this Rust issue, we also need to attach align attribute to the argument on the Rust side.
 
-### Stack-move Optimization
+### 3. Attaching wrapping flags for the switch to look up table conversion on SimplifyCFG
+
+(from proposal)
+This issue reports dropped nsw (no signed wrap) flags for arithmetic instructions on SimplifyCFG and InstCombine. (This is motivated by Rust Issue reported in the issue). This can be addressed by SimplifyCFG and InstCombine/InstSimplify. For the former SwitchToLookupTable is the place to handle this. And for the latter, simplifyBinOp in the InstSimplify is the one. We need to elaborate on when it’s safe to add nsw and/or nuw for both passes.
+
+### 4. Stack Move Optimization, which merge the allocas neither captured nor simultaneously used
+
+(from proposal)
+ Rust’s move semantics introduce more memcpy to optimize. We can use nocapture attribute and do a liveness analysis to find the necessity for memcpy. Redundant memcpy could happen frequently on Rust, but not on other languages. More details should be analyzed.
+
+### Other patches
 
 ## Performance Analysis
 
@@ -31,11 +42,11 @@
 
 This is combined improvement but this is the one I
 
-### stack-move optimization profiling
+### Profiling for Stack Move Optimization
 
 ## Future Work
 
-### forward dataflow based stack-move optimization
+### Dataflow sensitive Stack Move Optimization
 
 ###
 

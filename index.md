@@ -10,65 +10,100 @@
 
 ## Introduction
 
-Over this summer I worked on bassically middle-end passes like InstCombine, SimplifyCFG, MemCpyOpt.
+In Rust, there have been numerous reports of optimization failures, as we can see the case that [naive translations from C++ can result in decreased performance.](https://www.reddit.com/r/rust/comments/10dpw5r/c_vs_rust_which_is_faster_x86_assembly_inside/). In this project, we aim to address and rectify several of these reported issues. Over the summer, I focused primarily on middle-end passes like InstCombine, SimplifyCFG, and MemCpyOpt.
 
 ## Works
 
 ### 1. Constant Propagation for uniformly patterned aggregated types on InstCombine
 
-(from proposal)
-  This issue reports missed optimization opportunities for loads of global constant aggregates with the same elements. This particular opportunity could be handled by alignment-based and GEP-indexed-based analysis.
-  At first, there are no implemneted constatnt folding which can handle array or global variables with variable index.
+Originally there are no implemneted constatnt folding which can handle global aggregate-type variables with variable index. <https://llvm.godbolt.org/z/s97K4bG3z>
 
-This is the first step for constant folding, which folds the uniformly initialized bits patterns.
-<https://reviews.llvm.org/D144184>
+### Steps for Constant Folding
 
-second step is fold the cases that by using load instructions' alignment constraints, valid access patterns have all same results.
-<https://reviews.llvm.org/D144445>
+1. **Initial Step**: Fold aggregate variables with uniform bit patterns (either all ones or all zeros).
+   - <https://reviews.llvm.org/D144184>
+2. **Second Step**: Focus on cases where using load instruction alignment constraints ensures that all valid access patterns yield identical results.
+   - <https://reviews.llvm.org/D144445>
+3. **Third Step**: Analyze the GEP indices to determine whether all possible access indices are valid.
+   - <https://reviews.llvm.org/D146622>
 
-third step is to analize the gep indeces and checks the all possible indeces access are valid or not.
-<https://reviews.llvm.org/D146622>
+Although the issue on the Rust side remains unresolved for the embedded vector local manipulation for global array constants, we could finaly fold the constant global aggregate loads accordingly.
 
-### 2. Removal of memcpy introduced on the attributed with nocapture, readonly and noalias on MemCpyOpt
+### 2. Removal of memcpy introduced on the attributed with readonly, noalias and nocapture on MemCpyOpt
 
-(from proposal)
-  LLVM function arguments can have attributes, noalias shows there is no other pointer variable that points to the same as the argument, and readonly shows that the argument is not modified in the function. Functions attributed with noalias and readonly at the same position show invariance during the execution of the functions. We can omit the memcpy of argument to give such functions. To completely fix this Rust issue, we also need to attach align attribute to the argument on the Rust side.
+LLVM function arguments can have attributes, noalias shows there is no other pointer variable that points to the same as the argument, and readonly shows that the argument is not modified in the function. Functions attributed noalias and readonly at the same position show invariance during the execution of the functions. If it's also attributed with nocapture We can omit the memcpy of argument to give such functions.
 
-This is the patch to handle those case on LLVM side
+The patch to handle those case on LLVM side
 <https://reviews.llvm.org/D150970>
 
-and Rust side patch is this(althoguh it's not mine). That part was really hard for the tricky case for msvc corner case.
+and Rust side patch is this(althoguh it's not mine).
 <https://github.com/rust-lang/rust/pull/112157>
+
+and original motivational issue is closed.
 
 ### 3. Attaching wrapping flags for the switch to look up table conversion on SimplifyCFG
 
-(from proposal)
-This issue reports dropped nsw (no signed wrap) flags for arithmetic instructions on SimplifyCFG and InstCombine. (This is motivated by Rust Issue reported in the issue). This can be addressed by SimplifyCFG and InstCombine/InstSimplify. For the former SwitchToLookupTable is the place to handle this. And for the latter, simplifyBinOp in the InstSimplify is the one. We need to elaborate on when it’s safe to add nsw and/or nuw for both passes.
+This issue reports dropped nsw (no signed wrap) flags for arithmetic instructions on SimplifyCFG and InstCombine. (This is motivated by Rust Issue reported in the issue). This can be addressed by SimplifyCFG and InstCombine/InstSimplify. For the former SwitchToLookupTable is the place to handle this.
 
-for this issue I choose to fix step by step again
-<https://reviews.llvm.org/D146903>
+motivated transformation: <https://alive2.llvm.org/ce/z/GZs_dj>
+
+1. add nsw/nuw on SwitchToLookupTable in SimplifyCFG
+  a. add nsw on SwitchToLookupTable index calculation on MinCaseVal subtraction <- this revision will be
+
+  <https://alive2.llvm.org/ce/z/WSFRK5>
+
+  b. add nuw/nsw on BuildLookuptable BitMap shiftwidth calculation <https://reviews.llvm.org/D150838>
+
+  <https://alive2.llvm.org/ce/z/5Cmc72>
+
+  c. add nsw on BuildLookuptable LinearMap calculation <https://reviews.llvm.org/D150943>
+
+<https://alive2.llvm.org/ce/z/cKBQfs>
+preserve nsw on InstCombine for the cases. <https://reviews.llvm.org/D152088>
+transformation: <https://alive2.llvm.org/ce/z/ZWmZLv>
 
 ### 4. Stack Move Optimization, which merge the allocas neither captured nor simultaneously used
 
 (from proposal)
  Rust’s move semantics introduce more memcpy to optimize. We can use nocapture attribute and do a liveness analysis to find the necessity for memcpy. Redundant memcpy could happen frequently on Rust, but not on other languages. More details should be analyzed.
 
+single-BB
+<https://reviews.llvm.org/D153453>
+
+multi-BB
+<https://reviews.llvm.org/D155406>
+
+dataflow-sensitive
+<https://reviews.llvm.org/D159075>
+
 ### Other patches
+
+- [[ConstantFold] use StoreSize for VectorType byte checking](https://reviews.llvm.org/D150515)
+- [[ConstantFolding] fold integers whose bitwidth is greater than 64.](https://reviews.llvm.org/D150422)
+- [[LangRef] fix the function result attributes location explanation and example](https://reviews.llvm.org/D151772)
+- [[InstCombine] add overflow checking on AddSub `C-(X+C2) --> (C-C2)-X`](https://reviews.llvm.org/D152068)
 
 ## Performance Analysis
 
 ### LLVM update for the Rust with tons of improvement for
 
 This is combined improvement but this is the one I
-
-### Profiling for Stack Move Optimization
+<https://github.com/rust-lang/rust/pull/114048#issuecomment-1654195018>
 
 ## Future Work
 
-### Dataflow sensitive Stack Move Optimization
+### Extinding sensitive Stack Move Optimization
 
-###
+current landed are theoretically incomplete and there are rooms for more patterns
+
+so need to be done
+
+### Profiling for Stack Move Optimization
+
+It's effect is measured cocretely by original author for the patch,
 
 ### More missopportunities on Rust
+
+There are more issues on both on Rust side and llvm side, with A-LLVM,
 
 ## Acknoledgement

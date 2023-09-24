@@ -45,12 +45,12 @@ For the Second step, Nikita and erikdesjardins worked hard for the corner cases,
 This issue reports dropped nsw (no signed wrap) flags for arithmetic instructions on SimplifyCFG and InstCombine. (This is motivated by Rust Issue reported in the issue). This can be addressed by SimplifyCFG and InstCombine/InstSimplify. For the former SwitchToLookupTable on SimplifyCFG is the place to handle this.
 
 1. **Initial Step**: add nsw/nuw on SwitchToLookupTable in SimplifyCFG
-   1. Add nsw on SwitchToLookupTable index calculation on MinCaseVal subtraction
-      1. <https://reviews.llvm.org/D146903>
-   2. add nuw/nsw on BuildLookuptable BitMap shiftwidth calculation
-      1. <https://reviews.llvm.org/D150838>
-   3. add nsw on BuildLookuptable LinearMap calculation
-      1. <https://reviews.llvm.org/D150943>
+   - Add nsw on SwitchToLookupTable index calculation on MinCaseVal subtraction
+      - <https://reviews.llvm.org/D146903>
+   - add nuw/nsw on BuildLookuptable BitMap shiftwidth calculation
+      - <https://reviews.llvm.org/D150838>
+   - add nsw on BuildLookuptable LinearMap calculation
+      - <https://reviews.llvm.org/D150943>
 2. **Second Step**: Preserve nsw on InstCombine for the cases.
    - <https://reviews.llvm.org/D150838>
 

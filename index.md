@@ -58,16 +58,16 @@ Although SimplifyCFG patch was wrong and required [fixup patch](https://github.c
 
 ### 4. Stack Move Optimization, which merge the allocas neither captured nor simultaneously used
 
- Rust’s move semantics introduce more memcpy to optimize when . We can use nocapture attribute and do a liveness analysis to find the necessity for memcpy. Redundant memcpy could happen frequently on Rust, but not on other languages. More details should be analyzed.
+ Rust’s move semantics introduce memcpy when Clone type values are 1) rebind to the variables, 2) passed by value to the functions. But for most cases, also due to the property of the Rust references, both of the pointer aren't used simultaneously. By using alias/dataflow analysis, we could find such patterns on LLVM-IR. Originally, liveness-analysis based approach was proposed, but stalled for a long time. So I pushed forward by splitting it's patch.
 
-single-BB
-<https://reviews.llvm.org/D153453>
+1. **Initial Step**: Single basic block Stack Move Optimization
+   - <https://reviews.llvm.org/D153453>
+2. **Second Step**: Multi basic block Stack Move Optimization
+   - <https://reviews.llvm.org/D155406>
+3. **Third Step**: Dataflow sensitive Stack Move Optimization(WIP)
+   - <https://reviews.llvm.org/D159075>
 
-multi-BB
-<https://reviews.llvm.org/D155406>
-
-dataflow-sensitive
-<https://reviews.llvm.org/D159075>
+Due to the lifetime span reconstruction complexity, so much reverts happened. And now still in progress.
 
 ### Other patches
 
@@ -86,23 +86,23 @@ dataflow-sensitive
 
 ### LLVM update for the Rust with tons of improvement for
 
-This is combined improvement but this is the one I
-<https://github.com/rust-lang/rust/pull/114048#issuecomment-1654195018>
+Although is combined improvement of all of Rust-LLVM contributors, I could see the significant compiletime/binarysize improvements on Rust by updating LLVM.
+<https://github.com/rust-lang/rust/pull/114048#issuecomment-1654195018> That was very impressive moment to see those results. And I'm looking forward to see the results for the complete Stack Move Optimizations also.
 
 ## Future Work
 
-### Extinding sensitive Stack Move Optimization
+### Extending Stack Move Optimization
 
-current landed are theoretically incomplete and there are rooms for more patterns
-
-so need to be done
+Current optimizations, lack to reconstruct lifetime spans and have missopportunities to merge potential memory locations, i.e. for the copy of byval attributed arguments. So I'll do more works to realize more robust optimizations.
 
 ### Profiling for Stack Move Optimization
 
-It's effect is measured cocretely by original author for the patch,
+Expected improvements for Stack Move Optimization was measured by original patch author <https://arewestackefficientyet.com/>, but it'll better to see the scope and abilities of Stack Move Optimization.
 
-### More missopportunities on Rust
+### More issues on Rust and LLVM
 
-There are more issues on both on Rust side and llvm side, with A-LLVM,
+On Rust issues, there are more issues related LLVM middle-end, labeled with `A-LLVM`, I'll fixup the issues reported for my above patches.
 
 ## Acknoledgement
+
+I deeply appreciate the guidance and support from my mentor, Nikita Popov, throughout this project. His passion is evident, and he swiftly reviewed numerous patches, mine included. His assistance went beyond this project, positively influencing my broader journey as a software developer. Observing and working alongside him has been truly invaluable experiences. Furthermore, many LLVM contributors took the time to review my patches, even when they were less than perfect. I genuinely appreciate the entire LLVM community.

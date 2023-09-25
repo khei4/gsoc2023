@@ -58,7 +58,7 @@ Although SimplifyCFG patch was wrong and required [fixup patch](https://github.c
 
 ### 4. Stack Move Optimization, which merges the allocas neither captured nor simultaneously used
 
- Rust’s move semantics introduce memcpy when Clone type values are 1) rebind to the variables, 2) passed by value to the functions. But for most cases, also due to the property of the Rust references, both pointers aren't used simultaneously. By using alias/dataflow analysis, we could find such patterns on LLVM-IR. Originally, liveness-analysis approach was proposed, but it stalled for a long time. So I pushed forward by splitting it's patch.
+ Rust’s move semantics introduce memcpy when values are 1) rebind to the variables, 2) passed by value to the functions. But for most cases, also due to the property of the Rust references, both pointers aren't used simultaneously. By using alias/dataflow analysis, we could find such patterns on LLVM-IR. Originally, liveness-analysis approach was proposed, but it stalled for a long time. So I pushed forward by splitting it's patch.
 
 1. **Initial Step**: Single basic block Stack Move Optimization
    - <https://reviews.llvm.org/D153453>
@@ -103,6 +103,6 @@ The original patch author measured improvements for Stack Move Optimization <htt
 
 On Rust issues, there are more issues related to LLVM middle-end, labeled with `A-LLVM`; I'll also fix the issues reported for my above patches.
 
-## Acknoledgement
+## Acknowledgement
 
 I deeply appreciate the guidance and support from my mentor, Nikita Popov, throughout this project. His passion is evident, and he swiftly reviewed numerous patches, mine included. His assistance went beyond this project, positively influencing my broader journey as a software developer. Observing and working alongside him has been truly an invaluable experience. Furthermore, many LLVM contributors took the time to review my patches, even when they were less than perfect. I genuinely appreciate the entire LLVM community.
